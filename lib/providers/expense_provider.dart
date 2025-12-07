@@ -1,38 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
+import '../services/api_service.dart';
 
-final expenseProvider = StateNotifierProvider<ExpenseNotifier, List<Expense>>((ref) {
+final expenseProvider =
+StateNotifierProvider<ExpenseNotifier, List<Expense>>((ref) {
   return ExpenseNotifier()..loadExpenses();
 });
 
 class ExpenseNotifier extends StateNotifier<List<Expense>> {
   ExpenseNotifier() : super([]);
 
-  static const storageKey = 'expenses';
-
+  // Load from API
   Future<void> loadExpenses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(storageKey);
-
-    if (raw != null) {
-      state = Expense.decode(raw);
-    }
+    state = await ApiService.fetchExpenses();
   }
 
-  Future<void> saveExpenses() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(storageKey, Expense.encode(state));
+  // Add
+  Future<void> addExpense(Expense e) async {
+    final newExpense = await ApiService.addExpense(e);
+    state = [...state, newExpense];
   }
 
-  void addExpense(Expense expense) async {
-    state = [...state, expense];
-    await saveExpenses();
-  }
-
-  void deleteExpense(String id) async {
-    state = state.where((e) => e.id != id).toList();
-    await saveExpenses();
+  // Delete
+  Future<void> deleteExpense(int id) async {
+    await ApiService.deleteExpense(id);
+    state = state.where((exp) => exp.id != id).toList();
   }
 }
